@@ -1,5 +1,4 @@
-from datetime import date
-from datetime import datetime
+from datetime import datetime, timedelta
 # today = date.today()
 
 
@@ -13,7 +12,6 @@ class Menu:
         print('3. Print schedule')
         print('4. Save your schedule')
         print('5. Exit')
-
 
     def match_answer(self, answer):
         reservation = Reservations()
@@ -31,10 +29,9 @@ class Menu:
 
 
 class Reservations:
-    now_with_sec = datetime.now()
-    now = now_with_sec.strftime('%d.%m.%Y %H:%M')
-    list_of_reservations = []
 
+    now = datetime.now()
+    list_of_reservations = []
 
     def making_reservation(self):
         i = 0
@@ -43,18 +40,18 @@ class Reservations:
             date = input('When would you like to make a reservation {DD.MM.YYY HH:MM}\n')
             date_format = '%d.%m.%Y %H:%M'
             date = datetime.strptime(date, date_format)
-            is_it = self.check_if_available(date)
-            if is_it == True:
-                duration = input('How long would you like to book?\na) 30 minutes\nb) 60 minutes\nc) 90 minutes')
-                match duration:
-                    case 'a':
-                        duration = 30
-                    case 'b':
-                        duration = 60
-                    case 'c':
-                        duration = 90
-            elif is_it == False:
-                say = input('The time you choose is unavailable. Would you like to choose a different time?')
+            self.check_if_possible(date)
+            duration = input('How long would you like to book?\na) 30 minutes\nb) 60 minutes\nc) 90 minutes\n')
+            match duration:
+                case 'a':
+                    duration = 30
+                case 'b':
+                    duration = 60
+                case 'c':
+                    duration = 90
+                case _:
+                    print('you chose nothing')
+            self.check_if_available(date, duration)
             self.stored_reservations(full_name, date, duration)
             answer_1 = int(input('Reservation completed. What would you like to do now?\n1.Make another reservation\n2.Go to the main menu\n3.Exit'))
             if answer_1 == 1:
@@ -68,16 +65,39 @@ class Reservations:
             if answer_1 == 3:
                 i =1
                 exit
+
     def stored_reservations(self, full_name, date, duration):
+        date = date.strftime('%d.%m.%Y %H:%M')
         reservations = {'full name': full_name, 'date': date, 'duration': duration}
         Reservations.list_of_reservations.append(reservations)
 
     def print_schedule(self):
-        print(Reservations.list_of_reservations)
+        for i in Reservations.list_of_reservations:
+            print(i)
 
-    def check_if_available(self, ext_day):
-        # i should check if the date that user is choosing is in over 2hrs
-        return True
+    def check_if_possible(self, ext_day):
+        i = 0
+        while i == 0:
+            if Reservations.now + timedelta(hours=2) <= ext_day:
+                i = 1
+                return True
+            else:
+                print('The time you choose is in the past or is in less than two hours. please choose a different time\n')
+
+    def check_if_available(self, starting_time, duration):
+        while True:
+            if len(Reservations.list_of_reservations) == 0:
+                return True
+            else:
+                ending_time = starting_time + timedelta(minutes=int(duration))
+                for i in Reservations.list_of_reservations:
+                    i_start = datetime.strptime(i['date'], '%d.%m.%Y %H:%M')
+                    i_end = i_start + timedelta(minutes=i['duration'])
+                    if i_end > starting_time and ending_time > i_start:
+                        print('The time you have picked is taken. Please choose a different time\n')
+                        return False
+                return True
+
 
     def cancel_reservation(self, full_name, date):
         # here i have to search trough my dict to look for persons reservation having provided their
@@ -87,7 +107,7 @@ class Reservations:
         pass
 
     def save_to_file(self):
-        #save dict of reservations to file
+        # save dict of reservations to file
         pass
 
 
