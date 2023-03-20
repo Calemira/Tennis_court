@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-
-
-# today = date.today()
+import json
 
 
 class Menu:
@@ -25,7 +23,7 @@ class Menu:
             case 3:
                 reservation.print_schedule()
             case 4:
-                print('Saving')
+                reservation.save_to_file()
             case 5:
                 exit
 
@@ -39,11 +37,18 @@ class Reservations:
         i = 0
         while i == 0:
             full_name = input('What is your full name\n')
-            date = input('When would you like to make a reservation {DD.MM.YYY HH:MM}\n')
-            date_format = '%d.%m.%Y %H:%M'
-            date = datetime.strptime(date, date_format)
-            is_possible = self.check_if_possible(date)
-            if is_possible:
+            while True:
+                date = input('When would you like to make a reservation {DD.MM.YYY HH:MM}\n')
+                date_format = '%d.%m.%Y %H:%M'
+                try:
+                    date = datetime.strptime(date, date_format)
+                    if self.check_if_possible(date):
+                        break
+                    else:
+                        print('The date you have choosen is either in the past or in less than two hours.')
+                except (ValueError, TypeError):
+                    print('Please provide the date in given format\n')
+            while True:
                 duration = input('How long would you like to book?\na) 30 minutes\nb) 60 minutes\nc) 90 minutes\n')
                 match duration:
                     case 'a':
@@ -53,14 +58,13 @@ class Reservations:
                     case 'c':
                         duration = 90
                     case _:
-                        print('you chose nothing')
-                is_available = self.check_if_available(date, duration)
-            elif not is_possible:
-                print('The date you have choosen is either in the past or in less than two hours.')
+                        print('Please choose one of given options\n')
+                        continue
+                break
+            is_available = self.check_if_available(date, duration)
             if is_available:
                 self.stored_reservations(full_name, date, duration)
-                answer_1 = int(input(
-                    'Reservation completed. What would you like to do now?\n1.Make another reservation\n2.Go to the main menu\n3.Exit'))
+                answer_1 = int(input('Reservation completed. What would you like to do now?\n1.Make another reservation\n2.Go to the main menu\n3.Exit'))
                 if answer_1 == 1:
                     pass
                 if answer_1 == 2:
@@ -103,26 +107,42 @@ class Reservations:
                     return True
 
     def cancel_reservation(self):
-        b = False
+        is_reserved = False
+        is_name_found = False
         full_name = input('Please provide the name that you have made the reservation with\n')
         for i in Reservations.list_of_reservations:
             if i.get('full name') == full_name:
+                is_name_found = True
                 date = input('Please provide the date with and hour that you have booked {DD.MM.YYY HH:MM}\n')
                 if i.get('date') == date:
-                    Reservations.list_of_reservations.remove(i)
-                    b = True
+                    if i.get('date') - datetime.timedelta(hours=1) >= Reservations.now:
+                        # needs checking
+                        Reservations.list_of_reservations.remove(i)
+                        is_reserved = True
+                        print('We succesfully cancelled your reservation')
+                        self.open_menu()
+                        return
                 else:
                     print('You have no reservation in that time\n')
-            else:
-                print('You dont have any reservations under your name\n')
-                self.open_menu()
-        if b:
-            print('We succesfully cancelled your reservation')
-            self.open_menu()
+                    return
+        if not is_name_found:
+            print('No reservation was found under this name\n')
+            return
 
     def save_to_file(self):
-        # save dict of reservations to file
-        pass
+        start_date = input('Please enter the start date')
+        end_date = input('Please enter the end date')
+        while True:
+            ans = int(input('How would you like to save? 1. Json 2. CVS'))
+            if ans == 1:
+                with open("reservations_file.json", "w") as f:
+                    json.dump(Reservations.list_of_reservations, f)
+                return
+            elif ans == 2:
+                pass
+            else:
+                print('Please choose one of two options')
+                continue
 
     def open_menu(self):
         menu.display_menu()
@@ -133,3 +153,8 @@ menu = Menu()
 menu.display_menu()
 answer = int(input())
 menu.match_answer(answer)
+# plan for tomorrow:
+# make it so that when user want to print schedule it asks for start date and end date
+# then depending on if he wanted to just print it or save it we have 2 options following
+# saving to json and cvs file
+# printing in right format
