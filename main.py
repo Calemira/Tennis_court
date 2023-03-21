@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import json
+import csv
 
 
 class Menu:
@@ -23,7 +24,7 @@ class Menu:
                 case 2:
                     self.reservation.cancel_reservation()
                 case 3:
-                    self.reservation.start_end_date()
+                    self.reservation.print_schedule()
                 case 4:
                     self.reservation.save_to_file()
                 case 5:
@@ -43,6 +44,7 @@ class Reservations:
 
     def making_reservation(self):
         i = 0
+        j = 0
         while i == 0:
             full_name = input('What is your full name\n')
             if not self.check_if_can(full_name):
@@ -51,8 +53,8 @@ class Reservations:
                 date = input('When would you like to make a reservation {DD.MM.YYY HH:MM}\n')
                 date_format = '%d.%m.%Y %H:%M'
                 try:
-                    date = datetime.strptime(date, date_format)
-                    if self.check_if_possible(date):
+                    start_time = datetime.strptime(date, date_format)
+                    if self.check_if_possible(start_time):
                         break
                     else:
                         print('The date you have choosen is either in the past or in less than two hours.')
@@ -71,28 +73,37 @@ class Reservations:
                         print('Please choose one of given options\n')
                         continue
                 break
-            end_date = date + timedelta(minutes=duration)
-            is_available = self.check_if_available(date, end_date)
-            end_date = datetime.strftime(end_date, '%d.%m.%Y %H:%M')
+            end_time = start_time + timedelta(minutes=duration)
+            is_available, new_starting_time = self.check_if_available(date, end_time)
+            end_time = datetime.strftime(end_time, '%d.%m.%Y %H:%M')
             if is_available:
-                self.stored_reservations(full_name, date, end_date)
-                answer_1 = int(input('Reservation completed. What would you like to do now?\n1.Make another reservation\n2.Go to the main menu\n3.Exit\n'))
-                if answer_1 == 1:
-                    pass
-                if answer_1 == 2:
-                    i = 1
-                    self.open_menu()
-                if answer_1 == 3:
-                    i = 1
-                    exit()
+                self.stored_reservations(full_name, start_time, end_time)
+                self.answer()
             elif not is_available:
-                print('The date you choose is already taken.')
-                i = 1
+                print('The date you choose is already taken. The closest one to the one you choose is', new_starting_time)
+                while j == 0:
+                    ans = int(input('Is that time ok or do you want to choose a different one?\n 1) its ok\n 1) its not\n'))
+                    if ans == 1:
+                        new_ending_time = new_starting_time + timedelta(minutes=duration)
+                        self.stored_reservations(full_name, new_starting_time, new_ending_time)
+                        self.answer()
+                    elif ans == 2:
+                        j = 1
+                        continue
+                    else:
+                        print('Please choose either 1 or 2')
 
-    def stored_reservations(self, full_name, date, end_date):
-        date = date.strftime('%d.%m.%Y %H:%M')
-        reservations = {'full name': full_name, 'date': date, 'end_date': end_date}
+    def stored_reservations(self, full_name, start_time, end_time):
+        start_time = start_time.strftime('%d.%m.%Y %H:%M')
+        reservations = {'full name': full_name, 'start_time': start_time, 'end_time': end_time}
         self.list_of_reservations.append(reservations)
+
+    def get_start_time(self, my_list):
+        return my_list['start_time']
+
+    def sorting(self):
+        sorted_reservations = sorted(self.list_of_reservations, key=self.get_start_time)
+        return sorted_reservations
 
     def check_if_can(self, full_name):
         num = 0
@@ -103,6 +114,25 @@ class Reservations:
                     print('You already have 2 or more reservations')
                     return False
         return True
+
+    def start_end_date(self):
+        my_list = self.sorting()
+        start_date = input('Please enter starting date {dd.mm.YY}')
+        end_date = input('Please enter ending date {dd.mm.YY}')
+        date_format = '%d.%m.%Y'
+        start_date = datetime.strptime(start_date, date_format).date()
+        end_date = datetime.strptime(end_date, date_format).date()
+        delta = timedelta(days=1)
+        while start_date <= end_date:
+            for i in self.list_of_reservations:
+                date_format = '%d.%m.%Y'
+                data = i.get('start_time')[:-6]
+                data = datetime.strptime(data, date_format)
+                data = data.date()
+                if start_date == data:
+                    my_list.append(i)
+            start_date += delta
+        return my_list
 
     def print_schedule(self):
         my_list = self.start_end_date()
@@ -117,15 +147,16 @@ class Reservations:
 
     def check_if_available(self, starting_time, ending_time):
         if len(self.list_of_reservations) == 0:
-            return True
+            return True, None
         else:
             for i in self.list_of_reservations:
-                i_start = datetime.strptime(i['date'], '%d.%m.%Y %H:%M')
-                i_end = datetime.strptime(i['end_date'], '%d.%m.%Y %H:%M')
+                starting_time = datetime.strptime(starting_time, '%d.%m.%Y %H:%M')
+                i_start = datetime.strptime(i['start_time'], '%d.%m.%Y %H:%M')
+                i_end = datetime.strptime(i['end_time'], '%d.%m.%Y %H:%M')
                 if i_end > starting_time and ending_time > i_start:
-                    return False
+                    return False, i_end
                 else:
-                    return True
+                    return True, None
 
     def cancel_reservation(self):
         is_name_found = False
@@ -152,24 +183,16 @@ class Reservations:
             print('No reservation was found under this name\n')
             return
 
-    def start_end_date(self):
-        my_list = []
-        start_date = input('Please enter starting date {dd.mm.YY}')
-        end_date = input('Please enter ending date {dd.mm.YY}')
-        date_format = '%d.%m.%Y'
-        start_date = datetime.strptime(start_date, date_format).date()
-        end_date = datetime.strptime(end_date, date_format).date()
-        delta = timedelta(days=1)
-        while start_date <= end_date:
-            for i in self.list_of_reservations:
-                date_format = '%d.%m.%Y'
-                data = i.get('date')[:-6]
-                data = datetime.strptime(data, date_format)
-                data = data.date()
-                if start_date == data:
-                    my_list.append(i)
-            start_date += delta
-        return my_list
+    def answer(self):
+        answer_1 = int(input('Reservation completed. What would you like to do now?\n1.Make another reservation\n2.Go to the main menu\n3.Exit\n'))
+        if answer_1 == 1:
+            pass
+        if answer_1 == 2:
+            i = 1
+            self.open_menu()
+        if answer_1 == 3:
+            i = 1
+            exit()
 
     def save_to_file(self):
         my_list = self.start_end_date()
@@ -179,9 +202,17 @@ class Reservations:
                 json_file = json.dumps(my_list, separators=(',', ':'))
                 with open("reservations_file.json", "w") as f:
                     f.write(json_file)
+                self.open_menu()
                 return
             elif ans == 2:
-                pass
+                with open('reservations_file.css', 'w', newline='') as f:
+                    fieldnames = list(self.list_of_reservations[0].keys())
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for row in self.list_of_reservations:
+                        writer.writerow(row)
+                self.open_menu()
+                return
             else:
                 print('Please choose one of two options')
                 continue
