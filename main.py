@@ -62,14 +62,21 @@ class Reservations:
                       new_starting_time)
                 while j == 0:
                     ans = input('Does this date fit or do you want to pick another one?\n '
-                                '1)It fits \n 1)It does not fit\n')
+                                '1)It fits \n 2)It does not fit\n')
                     if ans == '1':
                         new_ending_time = new_starting_time + timedelta(minutes=duration)
                         self.stored_reservations(full_name, new_starting_time, new_ending_time)
                         self.answer()
                     elif ans == '2':
-                        j = 1
-                        continue
+                        ans_1 = input('What do you want to do next: \n1)Make a reservation for a different time'
+                                      '\n2)Exit the page\n')
+                        if ans_1 == '1':
+                            j = 1
+                            continue
+                        elif ans_1 == '2':
+                            exit()
+                        else:
+                            print('Please choose either option 1 or 2')
                     else:
                         print('Please choose either option 1 or 2')
 
@@ -134,7 +141,7 @@ class Reservations:
         return sorted_reservations
 
     def check_reservations_number(self, full_name):
-        #checking if the person doesnt have
+        # checking if the person doesn't have
         num = 0
         for i in self.list_of_reservations:
             if i.get('full name') == full_name:
@@ -177,9 +184,10 @@ class Reservations:
                 print('Please provide date in given format')
 
     def print_schedule(self):
+        date_format = '%d.%m.%Y'
         my_list, start_date, end_date = self.time_frame()
-        start_date_i = self.date_without_hours(start_date, 0)
-        end_date_i = self.date_without_hours(end_date, 0)
+        start_date_i = self.change_to_date(start_date, date_format).date()
+        end_date_i = self.change_to_date(end_date, date_format).date()
         delta = timedelta(days=1)
 
         while start_date_i <= end_date_i:
@@ -187,7 +195,7 @@ class Reservations:
             print(day_of_week, ':')
             found_reservation = False
             for reservation in my_list:
-                date = self.date_without_hours(reservation.get('start_time'), 6)
+                date = self.change_to_date(reservation.get('start_time'), date_format).date()
                 if date == start_date_i:
                     found_reservation = True
                     print('Name:', reservation.get('full name'), reservation.get('start_time'),
@@ -197,17 +205,12 @@ class Reservations:
             start_date_i += delta
 
     def check_if_possible(self, ext_day):
+        # Checking if the time given by user is not in less than 2 hours or in the past
         now = datetime.now()
         if now + timedelta(hours=2) <= ext_day:
             return True
         else:
             return False
-
-    def date_without_hours(self, date, number):
-        date_format = '%d.%m.%Y'
-        data = date[:-number]
-        data = datetime.strptime(data, date_format).date()
-        return data
 
     def change_to_date(self, string, date_format):
         date = datetime.strptime(string, date_format)
@@ -221,24 +224,24 @@ class Reservations:
             for reservation in self.list_of_reservations:
                 i_start = self.change_to_date(reservation['start_time'], date_format)
                 i_end = self.change_to_date(reservation['end_time'], date_format)
-                print(i_start)
-                print(starting_time)
                 if i_end > starting_time and ending_time > i_start:
                     return False, i_end
-                else:
-                    return True, None
+            return True, None
 
     def cancel_reservation(self):
         is_name_found = False
         now = datetime.now()
         full_name = input('Please provide the name that you have made the reservation with\n')
 
+        # This method checks if there is a reservation under given name
+        # Then it checks if there is a reservation under given time
         for reservation in self.list_of_reservations:
             if reservation.get('full name') == full_name:
                 is_name_found = True
                 date = input('Please provide the date with and hour that you have booked {DD.MM.YYY HH:MM}\n')
                 date = datetime.strptime(date, '%d.%m.%Y %H:%M')
                 act_date = datetime.strptime(reservation.get('start_time'), '%d.%m.%Y %H:%M')
+                # Checking if the reservation is in over an hour in order to cancell it
                 if act_date == date:
                     if act_date - timedelta(hours=1) >= now:
                         self.list_of_reservations.remove(reservation)
@@ -258,19 +261,15 @@ class Reservations:
             return
 
     def answer(self):
-        k = 0
-        while k == 0:
+        while True:
             print("Action completed successfully. What would you like to do now?\n1.Make another reservation"
                   "\n2.Go to the main menu\n3.Exit\n", flush=True)
             answer_1 = input()
             if answer_1 == '1':
-                k = 1
                 break
-            if answer_1 == '2':
-                i = 1
+            elif answer_1 == '2':
                 self.open_menu()
-            if answer_1 == '3':
-                i = 1
+            elif answer_1 == '3':
                 exit()
             else:
                 print('Choose one of given answers')
